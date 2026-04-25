@@ -1,0 +1,38 @@
+<!-- 
+ Name: Cici Raheb
+ Email: craheb@ucsc.edu
+ Notes: N/A
+-->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <title>CSE 160 Asgn2</title>
+  <!-- <style>
+    #angle {
+      accent-color: yellow;
+    }
+  </style> -->
+</head>
+
+<body onload="main()">
+  <canvas id="webgl" width="400" height="400">
+    Please use a browser that supports "canvas"
+  </canvas>
+
+  <div>
+    Camera Angle <input type="range" id="angle" min="-180" max="180" value="0">
+  </div>
+
+  <script src="../lib/webgl-utils.js"></script>
+  <script src="../lib/webgl-debug.js"></script>
+  <script src="../lib/cuon-utils.js"></script>
+  <script src="../lib/cuon-matrix-cse160.js"></script>
+  <script src="Point.js"></script>
+  <script src="Triangle.js"></script>
+  <script src="Cube.js"></script>
+  <script src="asgn2.js"></script>
+</body>
+
+</html>
