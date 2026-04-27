@@ -17,29 +17,38 @@ let FSHADER_SOURCE = `
     gl_FragColor = u_FragColor;
   }`
 
+let gl;
+let g_shaderVars;
+
 let g_shapes = [];
 let g_globalAngleX = 0;
 let g_globalAngleY = 0;
 let g_lastPos = [0,0];
-let g_wing1Angle = 0;
-let g_wing2Angle = 0;
-let g_wing3Angle = 0;
+
+let g_wingParts = [];
+
+let g_wingAngles = [0,0,0];
+
+let g_startTime = performance.now() / 1000.0;
+let g_seconds = performance.now() / 1000.0 - g_startTime;
 
 function main() {
-  let [canvas, gl] = setupWebGL();
-  if (!gl) return;
+  let [canvas, new_gl] = setupWebGL();
+  if (!new_gl) return;
+  gl = new_gl;
   gl.enable(gl.DEPTH_TEST);
 
-  let shaderVars = connectVariablesToGLSL(gl);
-  if (shaderVars[0] == -1) return;
+  g_shaderVars = connectVariablesToGLSL(gl);
+  if (g_shaderVars[0] == -1) return;
 
-  let [wing1Parts, wing2Parts, wing3Parts] = createMoogle();
+  createMoogle();
 
-  setupUI(gl, shaderVars, canvas, wing1Parts, wing2Parts, wing3Parts);
+  setupUI(canvas);
 
   gl.clearColor(0.0, 0.0, 0.0, 1.0);
 
-  renderAllShapes(gl, shaderVars);
+  //renderAllShapes();
+  requestAnimationFrame(tick);
 }
 
 function setupWebGL() {
@@ -95,7 +104,7 @@ function connectVariablesToGLSL(gl) {
   return [a_Position, u_ModelMatrix, u_GlobalRotateMatrix, u_FragColor];
 }
 
-function setupUI(gl, shaderVars, canvas, wing1Parts, wing2Parts, wing3Parts) {
+function setupUI(canvas) {
   // inspired by code by Ronan Wong
   canvas.onmousemove = function (e) {
     let [x, y] = coordsEventtoGL(e, canvas);
@@ -103,36 +112,36 @@ function setupUI(gl, shaderVars, canvas, wing1Parts, wing2Parts, wing3Parts) {
       g_globalAngleX += (y - g_lastPos[1]) * 100;
       g_globalAngleY -= (x - g_lastPos[0]) * 100;
 
-      renderAllShapes(gl, shaderVars);
+      renderAllShapes();
     }
     g_lastPos = [x, y];
   }
 
   let wing1Slider = document.getElementById("wing1");
   wing1Slider.addEventListener("mousemove", function () {
-    g_wing1Angle = this.value;
-    updateMoogle(wing1Parts, g_wing1Angle, wing2Parts, g_wing2Angle, wing3Parts, g_wing3Angle);
-    renderAllShapes(gl, shaderVars);
+    g_wingAngles[0] = this.value;
+    updateMoogle();
+    renderAllShapes();
   });
 
   let wing2Slider = document.getElementById("wing2");
   wing2Slider.addEventListener("mousemove", function () {
-    g_wing2Angle = this.value;
-    updateMoogle(wing1Parts, g_wing1Angle, wing2Parts, g_wing2Angle, wing3Parts, g_wing3Angle);
-    renderAllShapes(gl, shaderVars);
+    g_wingAngles[1] = this.value;
+    updateMoogle();
+    renderAllShapes();
   });
 
   let wing3Slider = document.getElementById("wing3");
   wing3Slider.addEventListener("mousemove", function () {
-    g_wing3Angle = this.value;
-    updateMoogle(wing1Parts, g_wing1Angle, wing2Parts, g_wing2Angle, wing3Parts, g_wing3Angle);
-    renderAllShapes(gl, shaderVars);
+    g_wingAngles[2] = this.value;
+    updateMoogle();
+    renderAllShapes();
   });
 
   let angleSlider = document.getElementById("angle");
   angleSlider.addEventListener("mousemove", function () {
     g_globalAngleY = this.value / 1.0; 
-    renderAllShapes(gl, shaderVars);
+    renderAllShapes();
   });
 }
 
@@ -169,7 +178,7 @@ function createMoogle() {
   let pompomColor = color255to1([245, 144, 78, 255]);
   let wingColor = color255to1([117, 112, 129, 255]);
 
-  let wing1Angle = 20;
+  let wing1Angle = 30;
   let wing2Angle = 30;
   let wing3Angle = 110;
 
@@ -378,25 +387,28 @@ function createMoogle() {
   newShape.transformMatrix = new Matrix4(transformMatrix);
   wing3Parts.push(newShape);
 
-  return [wing1Parts, wing2Parts, wing3Parts];
+  g_wingParts = [wing1Parts, wing2Parts, wing3Parts];
 }
 
-function updateMoogle(wing1Parts, wing1Angle, wing2Parts, wing2Angle, wing3Parts, wing3Angle) {
-  for (shape of wing1Parts) {
+function updateMoogle() {
+  for (shape of g_wingParts[0]) {
     shape.matrix.set(shape.startMatrix);
-    shape.matrix.rotate(wing1Angle * shape.side, 0, 1, 0);
+    //shape.matrix.rotate(g_wingAngles[0] * shape.side, 0, 1, 0);
+    shape.matrix.rotate(Math.sin(g_seconds * 4) * 45 * shape.side, 0, 1, 0);
   }
 
-  for (shape of wing2Parts) {
+  for (shape of g_wingParts[1]) {
     shape.matrix.set(shape.matrixStack);
     shape.matrix.multiply(shape.transformMatrix);
-    shape.matrix.rotate(wing2Angle * shape.side, 0, 1, 0);
+    //shape.matrix.rotate(g_wingAngles[1] * shape.side, 0, 1, 0);
+    shape.matrix.rotate(Math.sin(g_seconds * 3) * 30 * shape.side, 0, 1, 0);
   }
 
-  for (shape of wing3Parts) {
+  for (shape of g_wingParts[2]) {
     shape.matrix.set(shape.matrixStack);
     shape.matrix.multiply(shape.transformMatrix);
-    shape.matrix.rotate(wing3Angle * shape.side, 0, 1, 0);
+    //shape.matrix.rotate(g_wingAngles[2] * shape.side, 0, 1, 0);
+    shape.matrix.rotate(Math.sin(g_seconds * 2) * 14 * shape.side, 0, 1, 0);
   }
 }
 
@@ -410,17 +422,28 @@ function pushTetrahedron(matrix, color) {
   g_shapes.push(new Tetrahedron(matrix, color));
 }
 
-function renderAllShapes(gl, shaderVars) {
+function tick() {
+  g_seconds = performance.now() / 1000.0 - g_startTime;
+  //console.log(g_seconds);
+
+  updateMoogle();
+
+  renderAllShapes();
+
+  requestAnimationFrame(tick);
+}
+
+function renderAllShapes() {
   u_GlobalRotateMatrix = new Matrix4()
   // inspired by code by Ronan Wong
   u_GlobalRotateMatrix.rotate(g_globalAngleY + 180, 0, 1, 0);
   u_GlobalRotateMatrix.rotate(g_globalAngleX, 1, 0, 0);
-  gl.uniformMatrix4fv(shaderVars[2], false, u_GlobalRotateMatrix.elements);
+  gl.uniformMatrix4fv(g_shaderVars[2], false, u_GlobalRotateMatrix.elements);
 
   // Clear <canvas>
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
   for (let i = 0; i < g_shapes.length; i++) {
-    g_shapes[i].render(gl, shaderVars);
+    g_shapes[i].render(gl, g_shaderVars);
   }
 }
