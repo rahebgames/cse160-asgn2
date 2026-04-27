@@ -21,6 +21,8 @@ let g_shapes = [];
 let g_globalAngleX = 0;
 let g_globalAngleY = 0;
 let g_lastPos = [0,0];
+let g_wing1Angle = 0;
+let g_wing2Angle = 0;
 
 function main() {
   let [canvas, gl] = setupWebGL();
@@ -30,11 +32,12 @@ function main() {
   let shaderVars = connectVariablesToGLSL(gl);
   if (shaderVars[0] == -1) return;
 
-  setupUI(gl, shaderVars, canvas);
+  let [wing1Parts, wing2Parts] = createMoogle();
+
+  setupUI(gl, shaderVars, canvas, wing1Parts, wing2Parts);
 
   gl.clearColor(0.0, 0.0, 0.0, 1.0);
 
-  createMoogle();
   renderAllShapes(gl, shaderVars);
 }
 
@@ -91,7 +94,7 @@ function connectVariablesToGLSL(gl) {
   return [a_Position, u_ModelMatrix, u_GlobalRotateMatrix, u_FragColor];
 }
 
-function setupUI(gl, shaderVars, canvas) {
+function setupUI(gl, shaderVars, canvas, wing1Parts, wing2Parts) {
   // inspired by code by Ronan Wong
   canvas.onmousemove = function (e) {
     let [x, y] = coordsEventtoGL(e, canvas);
@@ -103,6 +106,20 @@ function setupUI(gl, shaderVars, canvas) {
     }
     g_lastPos = [x, y];
   }
+
+  let wing1Slider = document.getElementById("wing1");
+  wing1Slider.addEventListener("mousemove", function () {
+    g_wing1Angle = this.value;
+    updateMoogle(wing1Parts, g_wing1Angle, wing2Parts, g_wing2Angle);
+    renderAllShapes(gl, shaderVars);
+  });
+
+  let wing2Slider = document.getElementById("wing2");
+  wing2Slider.addEventListener("mousemove", function () {
+    g_wing2Angle = this.value;
+    updateMoogle(wing1Parts, g_wing1Angle, wing2Parts, g_wing2Angle);
+    renderAllShapes(gl, shaderVars);
+  });
 
   let angleSlider = document.getElementById("angle");
   angleSlider.addEventListener("mousemove", function () {
@@ -127,8 +144,14 @@ function color255to1(color) {
 }
 
 function createMoogle() {
+  let wing1Parts = [];
+  let wing2Parts = [];
+
   let matrix;
   let color;
+  let newShape;
+  let matrixStack;
+  let transformMatrix;
 
   let bodyColor = color255to1([224, 206, 191, 255])
   let noseColor = color255to1([144, 118, 108, 255])
@@ -137,10 +160,12 @@ function createMoogle() {
   let pompomColor = color255to1([245, 144, 78, 255]);
   let wingColor = color255to1([117, 112, 129, 255]);
 
+  let wing1Angle = 20;
+  let wing2Angle = 30;
+
   // body
   matrix = new Matrix4();
   matrix.setTranslate(0, -0.25, 0);
-  //matrix.rotate(0, 0, 0, 1);
   matrix.scale(0.45, 0.45, 0.45);
   color = bodyColor;
   pushCube(matrix, color);
@@ -263,21 +288,28 @@ function createMoogle() {
   matrix = new Matrix4();
   matrix.setTranslate(-0.15, -0.2, 0.25);
   matrix.rotate(-10, 0, 0, 1);
-  matrix.rotate(20, 0, 1, 0);
+  matrix.rotate(wing1Angle, 0, 1, 0);
   matrix.rotate(20, 1, 0, 0);
   matrix.scale(0.1, 0.2, 0.05);
   color = wingColor;
-  pushCube(matrix, color);
+  newShape = pushCube(matrix, color);
+  newShape.side = 1;
+  newShape.startMatrix = new Matrix4(matrix);
+  wing1Parts.push(newShape);
+  matrixStack = matrix;
 
   // left wing middle
-  matrix = new Matrix4();
-  matrix.setTranslate(-0.23, -0.18, 0.3);
-  matrix.rotate(0, 0, 0, 1);
-  matrix.rotate(50, 0, 1, 0);
-  matrix.rotate(20, 1, 0, 0);
-  matrix.scale(0.1, 0.2, 0.05);
+  matrix = new Matrix4(matrixStack);
+  transformMatrix = new Matrix4();
+  transformMatrix.translate(-1, 0.02, 0.05);
+  transformMatrix.rotate(wing2Angle, 0, 1, 0);
+  matrix.multiply(transformMatrix)
   color = wingColor;
-  pushCube(matrix, color);
+  newShape = pushCube(matrix, color);
+  newShape.side = 1;
+  newShape.matrixStack = matrixStack;
+  newShape.transformMatrix = new Matrix4(transformMatrix);
+  wing2Parts.push(newShape);
 
   // left wing outer
   matrix = new Matrix4();
@@ -293,20 +325,28 @@ function createMoogle() {
   matrix = new Matrix4();
   matrix.setTranslate(0.15, -0.2, 0.25);
   matrix.rotate(10, 0, 0, 1);
-  matrix.rotate(-20, 0, 1, 0);
+  matrix.rotate(-wing1Angle, 0, 1, 0);
   matrix.rotate(20, 1, 0, 0);
   matrix.scale(0.1, 0.2, 0.05);
   color = wingColor;
-  pushCube(matrix, color);
+  newShape = pushCube(matrix, color);
+  newShape.side = -1;
+  newShape.startMatrix = new Matrix4(matrix);
+  wing1Parts.push(newShape);
+  matrixStack = matrix;
 
   // right wing middle
-  matrix = new Matrix4();
-  matrix.setTranslate(0.23, -0.18, 0.3);
-  matrix.rotate(-50, 0, 1, 0);
-  matrix.rotate(20, 1, 0, 0);
-  matrix.scale(0.1, 0.2, 0.05);
+  matrix = new Matrix4(matrixStack);
+  transformMatrix = new Matrix4();
+  transformMatrix.setTranslate(1, 0.02, 0.05);
+  transformMatrix.rotate(-wing2Angle, 0, 1, 0);
+  matrix.multiply(transformMatrix)
   color = wingColor;
-  pushCube(matrix, color);
+  newShape = pushCube(matrix, color);
+  newShape.side = -1;
+  newShape.matrixStack = matrixStack;
+  newShape.transformMatrix = new Matrix4(transformMatrix);
+  wing2Parts.push(newShape);
 
   // right wing outer
   matrix = new Matrix4();
@@ -316,10 +356,27 @@ function createMoogle() {
   matrix.scale(0.15, 0.25, 0.05);
   color = wingColor;
   pushCube(matrix, color);
+
+  return [wing1Parts, wing2Parts];
+}
+
+function updateMoogle(wing1Parts, wing1Angle, wing2Parts, wing2Angle) {
+  for (shape of wing1Parts) {
+    shape.matrix.set(shape.startMatrix);
+    shape.matrix.rotate(wing1Angle * shape.side, 0, 1, 0);
+  }
+
+  for (shape of wing2Parts) {
+    shape.matrix.set(shape.matrixStack);
+    shape.matrix.multiply(shape.transformMatrix);
+    shape.matrix.rotate(wing2Angle * shape.side, 0, 1, 0);
+  }
 }
 
 function pushCube(matrix, color) {
-  g_shapes.push(new Cube(matrix, color));
+  let newCube = new Cube(matrix, color)
+  g_shapes.push(newCube);
+  return newCube;
 }
 
 function pushTetrahedron(matrix, color) {
@@ -329,7 +386,7 @@ function pushTetrahedron(matrix, color) {
 function renderAllShapes(gl, shaderVars) {
   u_GlobalRotateMatrix = new Matrix4()
   // inspired by code by Ronan Wong
-  u_GlobalRotateMatrix.rotate(g_globalAngleY + 45, 0, 1, 0);
+  u_GlobalRotateMatrix.rotate(g_globalAngleY + 180, 0, 1, 0);
   u_GlobalRotateMatrix.rotate(g_globalAngleX, 1, 0, 0);
   gl.uniformMatrix4fv(shaderVars[2], false, u_GlobalRotateMatrix.elements);
 
