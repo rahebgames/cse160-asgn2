@@ -29,6 +29,7 @@ let g_wingParts = [];
 
 let g_wingAngles = [0,0,0];
 
+let g_animationToggle = true;
 let g_startTime = performance.now() / 1000.0;
 let g_seconds = performance.now() / 1000.0 - g_startTime;
 
@@ -117,32 +118,27 @@ function setupUI(canvas) {
     g_lastPos = [x, y];
   }
 
+  let onButton = document.getElementById("on");
+  onButton.onclick = function() { g_animationToggle = true; }
+
+  let offButton = document.getElementById("off");
+  offButton.onclick = function() { g_animationToggle = false; }
+
   let wing1Slider = document.getElementById("wing1");
-  wing1Slider.addEventListener("mousemove", function () {
-    g_wingAngles[0] = this.value;
-    updateMoogle();
-    renderAllShapes();
-  });
+  wing1Slider.addEventListener("input", function () {
+    g_wingAngles[0] = this.value; });
 
   let wing2Slider = document.getElementById("wing2");
-  wing2Slider.addEventListener("mousemove", function () {
-    g_wingAngles[1] = this.value;
-    updateMoogle();
-    renderAllShapes();
-  });
+  wing2Slider.addEventListener("input", function () {
+    g_wingAngles[1] = this.value; });
 
   let wing3Slider = document.getElementById("wing3");
-  wing3Slider.addEventListener("mousemove", function () {
-    g_wingAngles[2] = this.value;
-    updateMoogle();
-    renderAllShapes();
-  });
+  wing3Slider.addEventListener("input", function () {
+    g_wingAngles[2] = this.value; });
 
   let angleSlider = document.getElementById("angle");
-  angleSlider.addEventListener("mousemove", function () {
-    g_globalAngleY = this.value / 1.0; 
-    renderAllShapes();
-  });
+  angleSlider.addEventListener("input", function () {
+    g_globalAngleY = this.value / 1.0; });
 }
 
 // inspired by code by Ronan Wong
@@ -390,25 +386,33 @@ function createMoogle() {
   g_wingParts = [wing1Parts, wing2Parts, wing3Parts];
 }
 
+// my version of updateAnimationAngles
 function updateMoogle() {
+  let newAngle;
   for (shape of g_wingParts[0]) {
     shape.matrix.set(shape.startMatrix);
-    //shape.matrix.rotate(g_wingAngles[0] * shape.side, 0, 1, 0);
-    shape.matrix.rotate(Math.sin(g_seconds * 4) * 45 * shape.side, 0, 1, 0);
+
+    if (g_animationToggle) newAngle = Math.sin(g_seconds * 4) * 45 * shape.side;
+    else newAngle = g_wingAngles[0] * shape.side;
+    shape.matrix.rotate(newAngle, 0, 1, 0);
   }
 
   for (shape of g_wingParts[1]) {
     shape.matrix.set(shape.matrixStack);
     shape.matrix.multiply(shape.transformMatrix);
-    //shape.matrix.rotate(g_wingAngles[1] * shape.side, 0, 1, 0);
-    shape.matrix.rotate(Math.sin(g_seconds * 3) * 30 * shape.side, 0, 1, 0);
+
+    if (g_animationToggle) newAngle = Math.sin(g_seconds * 3) * 30 * shape.side;
+    else newAngle = g_wingAngles[1] * shape.side;
+    shape.matrix.rotate(newAngle, 0, 1, 0);
   }
 
   for (shape of g_wingParts[2]) {
     shape.matrix.set(shape.matrixStack);
     shape.matrix.multiply(shape.transformMatrix);
-    //shape.matrix.rotate(g_wingAngles[2] * shape.side, 0, 1, 0);
-    shape.matrix.rotate(Math.sin(g_seconds * 2) * 14 * shape.side, 0, 1, 0);
+
+    if (g_animationToggle) newAngle = Math.sin(g_seconds * 2) * 15 * shape.side;
+    else newAngle = g_wingAngles[2] * shape.side;
+    shape.matrix.rotate(newAngle, 0, 1, 0);
   }
 }
 
@@ -436,7 +440,7 @@ function tick() {
 function renderAllShapes() {
   u_GlobalRotateMatrix = new Matrix4()
   // inspired by code by Ronan Wong
-  u_GlobalRotateMatrix.rotate(g_globalAngleY + 180, 0, 1, 0);
+  u_GlobalRotateMatrix.rotate(g_globalAngleY + 45, 0, 1, 0);
   u_GlobalRotateMatrix.rotate(g_globalAngleX, 1, 0, 0);
   gl.uniformMatrix4fv(g_shaderVars[2], false, u_GlobalRotateMatrix.elements);
 
