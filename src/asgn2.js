@@ -33,6 +33,9 @@ let g_animationToggle = true;
 let g_startTime = performance.now() / 1000.0;
 let g_seconds = performance.now() / 1000.0 - g_startTime;
 
+let g_fpsElement;
+let g_fpsQueue = [];
+
 function main() {
   let [canvas, new_gl] = setupWebGL();
   if (!new_gl) return;
@@ -139,6 +142,8 @@ function setupUI(canvas) {
   let angleSlider = document.getElementById("angle");
   angleSlider.addEventListener("input", function () {
     g_globalAngleY = this.value / 1.0; });
+
+  g_fpsElement = document.getElementById("fps");
 }
 
 // inspired by code by Ronan Wong
@@ -427,7 +432,18 @@ function pushTetrahedron(matrix, color) {
 }
 
 function tick() {
-  g_seconds = performance.now() / 1000.0 - g_startTime;
+  let now = performance.now();
+  g_seconds = now / 1000.0 - g_startTime;
+
+  // fps tracker by https://www.growingwiththeweb.com/2017/12/fast-simple-js-fps-counter.html
+  let duration = now - g_startTime;
+  while (g_fpsQueue.length > 0 && g_fpsQueue[0] <= now - 1000) {
+    g_fpsQueue.shift();
+  }
+  g_fpsQueue.push(now);
+  let fps = g_fpsQueue.length;
+  g_fpsElement.innerText = "ms: " + Math.floor(duration) + " fps: " + fps;
+
   //console.log(g_seconds);
 
   updateMoogle();
@@ -437,6 +453,7 @@ function tick() {
   requestAnimationFrame(tick);
 }
 
+// my version of renderScene
 function renderAllShapes() {
   u_GlobalRotateMatrix = new Matrix4()
   // inspired by code by Ronan Wong
@@ -450,4 +467,14 @@ function renderAllShapes() {
   for (let i = 0; i < g_shapes.length; i++) {
     g_shapes[i].render(gl, g_shaderVars);
   }
+
+  // Performance Tester
+  // let K = 300.0;
+  // for (let i = 1; i < K; i++) {
+  //   let c = new Cube(new Matrix4(), [1,1,1,1]);
+  //   c.matrix.translate(-0.8, 1.9 * i / K - 1.0, 0);
+  //   c.matrix.rotate(g_seconds * 100, 1, 1, 1);
+  //   c.matrix.scale(0.1, 0.5 / K, 1.0 / K);
+  //   c.render(gl, g_shaderVars);
+  // }
 }
